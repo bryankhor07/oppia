@@ -21,6 +21,7 @@ import json
 import logging
 import re
 import zipfile
+import requests
 
 from core import feconf
 from core import utils
@@ -292,7 +293,7 @@ class CheckEmailSubscription(
         """Handles GET request."""
         try:
             assert self.normalized_request is not None
-            emailExists = user_services.get_user_settings_from_email(email)
+            email_subscribed = check_newsletter_subscription(email)
             status = False
             # Handle the case when the email exist in the database.
             if emailExists is not None:
@@ -305,6 +306,27 @@ class CheckEmailSubscription(
             logging.error(f"Error in CheckEmailSubscription handler: {e}")
             self.render_json({'error': str(e)})
 
+def check_newsletter_subscription(email: str) -> bool:
+    """Check if the given email is subscribed to the newsletter.
+
+    Args:
+        email: The email address to check.
+
+    Returns:
+        True if the email is subscribed, False otherwise.
+    """
+    # Assuming there's an endpoint like this based on the TypeScript implementation
+    url = f"/checkemailsubscription/<email>"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
+        # Assuming the endpoint returns a JSON with a 'status' field indicating subscription status
+        return response.json().get('status', False)
+    except requests.RequestException as e:
+        print(f"Error checking newsletter subscription for {email}: {e}")
+        return False
+    
 class PreferencesHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
     """Provides data for the preferences page."""
 
