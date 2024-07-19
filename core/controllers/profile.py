@@ -330,7 +330,6 @@ def check_newsletter_subscription(email: str) -> bool:
         return False
 
 
-    
 class PreferencesHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
     """Provides data for the preferences page."""
 
