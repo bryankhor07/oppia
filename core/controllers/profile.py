@@ -22,6 +22,7 @@ import logging
 import re
 import zipfile
 import requests
+import logging
 
 from core import feconf
 from core import utils
@@ -269,7 +270,7 @@ class CheckEmailSubscriptionNormalizedRequestDict(TypedDict):
 
 class CheckEmailSubscription(
     base.BaseHandler[Dict[str, str], CheckEmailSubscriptionNormalizedRequestDict]
-): # New Changes
+):
     """Checks if the email is subscribed to the mailing list."""
 
     GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
@@ -292,13 +293,9 @@ class CheckEmailSubscription(
     def get(self, email: str) -> None:
         """Handles GET request to check if an email is subscribed."""
         try:
-            emailExists = user_services.get_user_settings_from_email(email)
-            status = False
-            # Check if the user settings exist and the email is subscribed.
-            if emailExists is not None:
-                email_preferences = user_services.get_email_preferences(emailExists.user_id)
-                status = email_preferences.can_receive_email_updates
-            self.render_json({'status': status})
+            assert self.normalized_request is not None
+            emailExists = check_newsletter_subscription(email)
+            self.render_json({'status': emailExists})
         except KeyError as e:
             logging.error(f"Missing key in normalized payload: {e}")
             self.render_json({'error': f"Missing key: {str(e)}"})
@@ -315,12 +312,23 @@ def check_newsletter_subscription(email: str) -> bool:
     Returns:
         True if the email is subscribed, False otherwise.
     """
-    # Instead of making an HTTP request, call the internal handler function
-    emailExists = user_services.get_user_settings_from_email(email)
-    if emailExists is not None:
-        email_preferences = user_services.get_email_preferences(emailExists.user_id)
-        return email_preferences.can_receive_email_updates
-    return False
+    try:
+        # Fetch user settings from email
+        emailExists = user_services.get_user_settings_from_email(email)
+        if emailExists is not None:
+            logging.info(f"User found for email: {email}")
+            # Fetch email preferences
+            email_preferences = user_services.get_email_preferences(emailExists.user_id)
+            is_subscribed = email_preferences.can_receive_email_updates
+            logging.info(f"Email preferences for user {emailExists.user_id}: {email_preferences}")
+            return is_subscribed
+        else:
+            logging.info(f"No user found for email: {email}")
+            return False
+    except Exception as e:
+        logging.error(f"Error checking newsletter subscription for {email}: {e}")
+        return False
+
 
     
 class PreferencesHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
