@@ -312,13 +312,14 @@ def check_newsletter_subscription(email: str) -> bool:
     Returns:
         True if the email is subscribed, False otherwise.
     """
+    logging.info(f"Checking subscription status for email: {email}")
     try:
         # Fetch user settings from email
-        emailExists = user_services.get_user_settings_from_email(email)
+        emailExists = get_user_settings_from_email(email)
         if emailExists is not None:
             logging.info(f"User found for email: {email}")
             # Fetch email preferences
-            email_preferences = user_services.get_email_preferences(emailExists.user_id)
+            email_preferences = get_email_preferences(emailExists.user_id)
             is_subscribed = email_preferences.can_receive_email_updates
             logging.info(f"Email preferences for user {emailExists.user_id}: {email_preferences}")
             return is_subscribed
@@ -328,6 +329,75 @@ def check_newsletter_subscription(email: str) -> bool:
     except Exception as e:
         logging.error(f"Error checking newsletter subscription for {email}: {e}")
         return False
+
+
+import logging  # Ensure logging is imported
+
+class UpdateEmailSubscriptionHandler(
+    base.BaseHandler[
+        Dict[str, str], CheckEmailSubscriptionNormalizedRequestDict
+    ]
+):
+    """Checks if the email is subscribed to the mailing list and updates the subscription status if needed."""
+
+    GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
+
+    URL_PATH_ARGS_SCHEMAS = {
+        'email': {
+            'schema': {
+                'type': 'basestring',
+                'validators': [{
+                    'id': 'is_regex_matched',
+                    'regex_pattern': constants.EMAIL_REGEX
+                }]
+            }
+        }
+    }
+
+    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
+
+    @acl_decorators.open_access
+    def get(self, email: str) -> None:
+        """Handles GET request to check and update email subscription."""
+        logging.info(f"Starting subscription check for email: {email}")
+        try:
+            assert self.normalized_request is not None
+            email_exists = check_newsletter_subscription(email)
+            if not email_exists:
+                subscribe_email_to_newsletter(email)
+                logging.info(f"Email {email} is now subscribed.")
+                self.render_json({'status': 'subscribed'})
+            else:
+                logging.info(f"Email {email} is already subscribed.")
+                self.render_json({'status': 'already_subscribed'})
+        except KeyError as e:
+            logging.error(f"Missing key in normalized payload: {e}")
+            self.render_json({'error': f"Missing key: {str(e)}"})
+        except Exception as e:
+            logging.error(f"Error in UpdateEmailSubscriptionHandler: {e}")
+            self.render_json({'error': str(e)})
+        logging.info(f"Subscription check process completed for email: {email}")
+
+def subscribe_email_to_newsletter(email: str) -> None:
+    """Subscribe the given email to the newsletter if not already subscribed.
+
+    Args:
+        email: The email address to subscribe.
+    """
+    logging.info(f"Attempting to subscribe email: {email}")
+    try:
+        # Fetch user settings from email
+        user_settings = user_services.get_user_settings_from_email(email)
+        if user_settings is not None:
+            logging.info(f"User found for email: {email}")
+            # Update email preferences to subscribe
+            user_services.update_email_preferences(
+                user_settings.user_id, True, True, True, True)
+            logging.info(f"Email preferences updated for user {user_settings.user_id}")
+        else:
+            logging.info(f"No user found for email: {email}")
+    except Exception as e:
+        logging.error(f"Error subscribing email {email}: {e}")
 
 
 class PreferencesHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):

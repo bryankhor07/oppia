@@ -1169,6 +1169,14 @@ URLS = [
     get_redirect_route('/android_data', android.AndroidActivityHandler)
 ]
 
+# Add the import for the new handler
+from core.controllers import profile
+
+# Update the URLS list to include the new route
+URLS.extend([
+    get_redirect_route(r'/checkemailsubscription/<email>', profile.CheckEmailSubscription),
+    get_redirect_route(r'/updateemailsubscription/<email>', profile.UpdateEmailSubscriptionHandler),
+])
 # Adding redirects for topic landing pages.
 for subject, topics in constants.AVAILABLE_LANDING_PAGES.items():
     for topic in topics:

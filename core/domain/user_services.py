@@ -229,6 +229,33 @@ def get_multi_user_ids_from_usernames(
 
     return user_ids
 
+def check_newsletter_subscription(email: str) -> bool:
+    """Check if the given email is subscribed to the newsletter.
+
+    Args:
+        email: The email address to check.
+
+    Returns:
+        True if the email is subscribed, False otherwise.
+    """
+    logging.info(f"Checking subscription status for email: {email}")
+    try:
+        # Fetch user settings from email
+        emailExists = get_user_settings_from_email(email)
+        if emailExists is not None:
+            logging.info(f"User found for email: {email}")
+            # Fetch email preferences
+            email_preferences = get_email_preferences(emailExists.user_id)
+            is_subscribed = email_preferences.can_receive_email_updates
+            logging.info(f"Email preferences for user {emailExists.user_id}: {email_preferences}")
+            return is_subscribed
+        else:
+            logging.info(f"No user found for email: {email}")
+            return False
+    except Exception as e:
+        logging.error(f"Error checking newsletter subscription for {email}: {e}")
+        return False
+
 
 def get_user_settings_from_username(
     username: str
