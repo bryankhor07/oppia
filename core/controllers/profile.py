@@ -289,15 +289,15 @@ class CheckEmailSubscription(
     HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
 
     @acl_decorators.open_access
-    def get(self, email) -> None:
-        """Handles GET request."""
+    def get(self, email: str) -> None:
+        """Handles GET request to check if an email is subscribed."""
         try:
-            assert self.normalized_request is not None
-            email_subscribed = check_newsletter_subscription(email)
+            emailExists = user_services.get_user_settings_from_email(email)
             status = False
-            # Handle the case when the email exist in the database.
+            # Check if the user settings exist and the email is subscribed.
             if emailExists is not None:
-                status = True
+                email_preferences = user_services.get_email_preferences(emailExists.user_id)
+                status = email_preferences.can_receive_email_updates
             self.render_json({'status': status})
         except KeyError as e:
             logging.error(f"Missing key in normalized payload: {e}")
@@ -315,17 +315,13 @@ def check_newsletter_subscription(email: str) -> bool:
     Returns:
         True if the email is subscribed, False otherwise.
     """
-    # Assuming there's an endpoint like this based on the TypeScript implementation
-    url = f"/checkemailsubscription/<email>"
-    
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
-        # Assuming the endpoint returns a JSON with a 'status' field indicating subscription status
-        return response.json().get('status', False)
-    except requests.RequestException as e:
-        print(f"Error checking newsletter subscription for {email}: {e}")
-        return False
+    # Instead of making an HTTP request, call the internal handler function
+    emailExists = user_services.get_user_settings_from_email(email)
+    if emailExists is not None:
+        email_preferences = user_services.get_email_preferences(emailExists.user_id)
+        return email_preferences.can_receive_email_updates
+    return False
+
     
 class PreferencesHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
     """Provides data for the preferences page."""
