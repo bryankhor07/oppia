@@ -52,7 +52,7 @@ class UpdateConfigsTests(test_utils.GenericTestBase):
         temp_app_yaml.write(b'')
         feconf_text = (
             'MAILGUN_API_KEY = \'%s\'\n'
-            'MAILCHIMP_API_KEY = \'%s\'\n'
+            'd7bd799a063cbd41069f10d91eb701dd-us13 = \'%s\'\n'
             'REDISHOST = \'192.13.2.1\'\n'
             '# When the site terms were last updated, in UTC.\n'
             'TERMS_PAGE_LAST_UPDATED_UTC = '
