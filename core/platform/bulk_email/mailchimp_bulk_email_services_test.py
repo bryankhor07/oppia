@@ -227,7 +227,7 @@ class MailchimpServicesUnitTests(test_utils.GenericTestBase):
             secrets_services,
             'get_secret',
             lambda _: None,
-            expected_args=[('MAILCHIMP_API_KEY',)]
+            expected_args=[('d7bd799a063cbd41069f10d91eb701dd-us13',)]
         )
         with self.capture_logging(min_level=logging.ERROR) as logs:
             with swap_get_secret:
